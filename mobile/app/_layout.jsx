@@ -1,13 +1,19 @@
-import { View, Text } from "react-native";
-import React from "react";
-import { Image } from "expo-image";
+import { Stack } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import SafeScreen from "../components/SafeScreen";
+import { StatusBar } from "expo-status-bar";
 
 const RootLayout = () => {
   return (
-    <View>
-      <Text>RootLayout</Text>
-      <Text>Hello World</Text>
-    </View>
+    <SafeAreaProvider>
+      <SafeScreen>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+        </Stack>
+      </SafeScreen>
+      <StatusBar style="dark" />
+    </SafeAreaProvider>
   );
 };
 
