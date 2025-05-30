@@ -10,6 +10,7 @@ import React, { useState } from "react";
 import styles from "../../assets/styles/login.styles";
 import { Ionicons } from "@expo/vector-icons";
 import COLORS from "../../constants/colors";
+import { Link } from "expo-router";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -96,6 +97,16 @@ const Login = () => {
               <Text style={styles.buttonText}>Login</Text>
             )}
           </TouchableOpacity>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account?</Text>
+            <Link href="/signup" asChild>
+              <TouchableOpacity>
+                <Text style={styles.link}>Sign Up</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
       </View>
     </View>
