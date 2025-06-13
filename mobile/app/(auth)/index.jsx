@@ -21,7 +21,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const { user, isLoading, login, token } = useAuthStore();
+  const { isLoading, login } = useAuthStore();
   const handelLogin = async () => {
     const result = await login(email, password);
 
