@@ -10,7 +10,7 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const response = await fetch(
-        "http:192.168.56.183:3000/api/auth/register",
+        "http:192.168.239.183:3000/api/auth/register",
         {
           method: "POST",
           headers: {
@@ -64,7 +64,7 @@ export const useAuthStore = create((set) => ({
   login: async (email, password) => {
     set({ isLoading: true });
     try {
-      const response = await fetch("http:192.168.56.183:3000/api/auth/login", {
+      const response = await fetch("http:192.168.239.183:3000/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
