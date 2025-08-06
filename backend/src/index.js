@@ -9,11 +9,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT;
 
-// job.start();
+job.start();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(morgan("dev"));
+// app.use(morgan("dev"));
 
 import authRoutes from "./routes/auth.routes.js";
 import bookRoutes from "./routes/book.routes.js";
