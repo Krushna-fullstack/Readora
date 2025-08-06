@@ -6,6 +6,7 @@ export const useAuthStore = create((set) => ({
   user: null,
   token: null,
   isLoading: false,
+  isCheckingAuth: true,
 
   register: async (username, email, password) => {
     set({ isLoading: true });
@@ -15,25 +16,57 @@ export const useAuthStore = create((set) => ({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+        }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.message || "Registration failed");
+      if (!response.ok) throw new Error(data.message || "Something went wrong");
 
       await AsyncStorage.setItem("user", JSON.stringify(data.user));
       await AsyncStorage.setItem("token", data.token);
 
-      set({ user: data.user, token: data.token, isLoading: false });
+      set({ token: data.token, user: data.user, isLoading: false });
 
       return { success: true };
     } catch (error) {
       set({ isLoading: false });
-      return {
-        success: false,
-        message: error.message || "An error occurred during registration",
-      };
+      return { success: false, error: error.message };
+    }
+  },
+
+  login: async (email, password) => {
+    set({ isLoading: true });
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message || "Something went wrong");
+
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
+      await AsyncStorage.setItem("token", data.token);
+
+      set({ token: data.token, user: data.user, isLoading: false });
+
+      return { success: true };
+    } catch (error) {
+      set({ isLoading: false });
+      return { success: false, error: error.message };
     }
   },
 
@@ -45,45 +78,15 @@ export const useAuthStore = create((set) => ({
 
       set({ token, user });
     } catch (error) {
-      console.error("Error checking authentication:", error);
+      console.log("Auth check failed", error);
+    } finally {
+      set({ isCheckingAuth: false });
     }
   },
 
   logout: async () => {
-    try {
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
-      set({ user: null, token: null });
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
-  },
-
-  login: async (email, password) => {
-    set({ isLoading: true });
-    try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Login failed");
-
-      await AsyncStorage.setItem("user", JSON.stringify(data.user));
-      await AsyncStorage.setItem("token", data.token);
-
-      set({ user: data.user, token: data.token, isLoading: false });
-      return { success: true };
-    } catch (error) {
-      set({ isLoading: false });
-      return {
-        success: false,
-        message: error.message || "An error occurred during login",
-      };
-    }
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
+    set({ token: null, user: null });
   },
 }));

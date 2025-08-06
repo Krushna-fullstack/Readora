@@ -1,8 +1,9 @@
+import { useState } from "react";
 import {
   View,
   Text,
-  KeyboardAvoidingView,
   Platform,
+  KeyboardAvoidingView,
   ScrollView,
   TextInput,
   TouchableOpacity,
@@ -10,16 +11,17 @@ import {
   Image,
   ActivityIndicator,
 } from "react-native";
-import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import styles from "../../assets/styles/create.styles";
 import { Ionicons } from "@expo/vector-icons";
 import COLORS from "../../constants/colors";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import { useAuthStore } from "../../store/authStore";
 
-const Create = () => {
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { API_URL } from "../../constants/api";
+
+export default function Create() {
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [rating, setRating] = useState(3);
@@ -32,92 +34,99 @@ const Create = () => {
 
   const pickImage = async () => {
     try {
-      // require permissions to access the media library
+      // request permission if needed
       if (Platform.OS !== "web") {
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
+
         if (status !== "granted") {
           Alert.alert(
             "Permission Denied",
-            "Sorry, we need camera roll permissions to make this work!"
+            "We need camera roll permissions to upload an image"
           );
-
           return;
         }
       }
 
+      // launch image library
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.5, // reduce quality to save space
-        base64: true, // get base64 string of the image
+        quality: 0.5, // lower quality for smaller base64
+        base64: true,
       });
 
       if (!result.canceled) {
         setImage(result.assets[0].uri);
 
-        // if base64 is available, store it
+        // if base64 is provided, use it
+
         if (result.assets[0].base64) {
-          setImageBase64(result.assets[0].base64); // store base64 string
+          setImageBase64(result.assets[0].base64);
         } else {
-          // Otherwise convert the image to base64
+          // otherwise, convert to base64
           const base64 = await FileSystem.readAsStringAsync(
             result.assets[0].uri,
             {
               encoding: FileSystem.EncodingType.Base64,
             }
           );
+
           setImageBase64(base64);
         }
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      Alert.alert("Error", "There was a problem selecting your image");
     }
   };
+
   const handleSubmit = async () => {
     if (!title || !caption || !imageBase64 || !rating) {
-      Alert.alert(
-        "Missing Fields",
-        "Please fill in all fields and select an image."
-      );
+      Alert.alert("Error", "Please fill in all fields");
       return;
-      try {
-        setLoading(true);
-
-        // Get the file type from the image URI
-        const uriParts = image.split(".");
-        const fileType = uriParts[uriParts.length - 1];
-        const imageType = fileType
-          ? `image/${fileType.toLowerCase()}`
-          : "image/jpeg";
-
-        const imageDataUrl = `data:${imageType};base64,${imageBase64}`;
-      } catch (error) {
-        console.error("Error in handleSubmit:", error);
-        Alert.alert("Error", "Failed to submit the form. Please try again.");
-        return;
-      }
     }
 
-    setLoading(true);
     try {
-      // Here you would typically send the data to your backend
-      // For demonstration, we will just log it
-      console.log("Submitting:", { title, caption, rating, imageBase64 });
+      setLoading(true);
 
-      // Simulate a network request
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // get file extension from URI or default to jpeg
+      const uriParts = image.split(".");
+      const fileType = uriParts[uriParts.length - 1];
+      const imageType = fileType
+        ? `image/${fileType.toLowerCase()}`
+        : "image/jpeg";
 
-      Alert.alert("Success", "Book recommendation shared successfully!");
-      router.push("/(tabs)/home");
+      const imageDataUrl = `data:${imageType};base64,${imageBase64}`;
+
+      const response = await fetch(`${API_URL}/books`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          caption,
+          rating: rating.toString(),
+          image: imageDataUrl,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Something went wrong");
+
+      Alert.alert("Success", "Your book recommendation has been posted!");
+      setTitle("");
+      setCaption("");
+      setRating(3);
+      setImage(null);
+      setImageBase64(null);
+      router.push("/");
     } catch (error) {
-      console.error("Error submitting form:", error);
-      Alert.alert(
-        "Error",
-        "Failed to share book recommendation. Please try again."
-      );
+      console.error("Error creating post:", error);
+      Alert.alert("Error", error.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -142,105 +151,108 @@ const Create = () => {
     }
     return <View style={styles.ratingContainer}>{stars}</View>;
   };
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.container}
         style={styles.scrollViewStyle}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Add Book Recommendation</Text>
-          <Text style={styles.subtitle}>
-            Share your favorite book with the community!
-          </Text>
-        </View>
+        <View style={styles.card}>
+          {/* HEADER */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Add Book Recommendation</Text>
+            <Text style={styles.subtitle}>
+              Share your favorite reads with others
+            </Text>
+          </View>
 
-        <View style={styles.form}>
-          {/* Book Title */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Book Title</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="book-outline"
-                size={20}
-                color={COLORS.textSecondary}
-                style={styles.inputIcon}
-              />
+          <View style={styles.form}>
+            {/* BOOK TITLE */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Book Title</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="book-outline"
+                  size={20}
+                  color={COLORS.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter book title"
+                  placeholderTextColor={COLORS.placeholderText}
+                  value={title}
+                  onChangeText={setTitle}
+                />
+              </View>
+            </View>
+
+            {/* RATING */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Your Rating</Text>
+              {renderRatingPicker()}
+            </View>
+
+            {/* IMAGE */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Book Image</Text>
+              <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+                {image ? (
+                  <Image source={{ uri: image }} style={styles.previewImage} />
+                ) : (
+                  <View style={styles.placeholderContainer}>
+                    <Ionicons
+                      name="image-outline"
+                      size={40}
+                      color={COLORS.textSecondary}
+                    />
+                    <Text style={styles.placeholderText}>
+                      Tap to select image
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* CAPTION */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Caption</Text>
               <TextInput
-                style={styles.input}
-                placeholder="Enter book title"
+                style={styles.textArea}
+                placeholder="Write your review or thoughts about this book..."
                 placeholderTextColor={COLORS.placeholderText}
+                value={caption}
+                onChangeText={setCaption}
+                multiline
               />
             </View>
-          </View>
 
-          {/* Rating */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Your Rating</Text>
-            {renderRatingPicker(rating, setRating)}
-          </View>
-
-          {/* IMAGE */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Book Cover Image</Text>
-            <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-              {image ? (
-                <Image source={{ uri: image }} style={styles.previewImage} />
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={COLORS.white} />
               ) : (
-                <View style={styles.placeholderContainer}>
+                <>
                   <Ionicons
-                    name="image-outline"
-                    size={40}
-                    color={COLORS.textSecondary}
+                    name="cloud-upload-outline"
+                    size={20}
+                    color={COLORS.white}
+                    style={styles.buttonIcon}
                   />
-                  <Text style={styles.placeholderText}>
-                    {image ? "Change Image" : "Pick an Image"}
-                  </Text>
-                </View>
+                  <Text style={styles.buttonText}>Share</Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
-
-          {/* CAPTION */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Caption</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Write a brief caption about the book"
-              placeholderTextColor={COLORS.placeholderText}
-              value={caption}
-              onChangeText={setCaption}
-              multiline
-            />
-          </View>
-
-          {/* SUBMIT */}
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <>
-                <Ionicons
-                  name="cloud-upload-outline"
-                  size={20}
-                  color={COLORS.white}
-                  style={styles.buttonIcon}
-                />
-                <Text style={styles.buttonText}>Share</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
-};
-
-export default Create;
+}
