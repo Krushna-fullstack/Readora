@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
@@ -16,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import COLORS from "../../constants/colors";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
+import { useAuthStore } from "../../store/authStore";
 
 const Create = () => {
   const [title, setTitle] = useState("");
@@ -26,6 +28,7 @@ const Create = () => {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+  const { token } = useAuthStore();
 
   const pickImage = async () => {
     try {
@@ -73,7 +76,52 @@ const Create = () => {
       Alert.alert("Error", "Failed to pick image. Please try again.");
     }
   };
-  const handleSubmit = async () => {};
+  const handleSubmit = async () => {
+    if (!title || !caption || !imageBase64 || !rating) {
+      Alert.alert(
+        "Missing Fields",
+        "Please fill in all fields and select an image."
+      );
+      return;
+      try {
+        setLoading(true);
+
+        // Get the file type from the image URI
+        const uriParts = image.split(".");
+        const fileType = uriParts[uriParts.length - 1];
+        const imageType = fileType
+          ? `image/${fileType.toLowerCase()}`
+          : "image/jpeg";
+
+        const imageDataUrl = `data:${imageType};base64,${imageBase64}`;
+      } catch (error) {
+        console.error("Error in handleSubmit:", error);
+        Alert.alert("Error", "Failed to submit the form. Please try again.");
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      // Here you would typically send the data to your backend
+      // For demonstration, we will just log it
+      console.log("Submitting:", { title, caption, rating, imageBase64 });
+
+      // Simulate a network request
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      Alert.alert("Success", "Book recommendation shared successfully!");
+      router.push("/(tabs)/home");
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      Alert.alert(
+        "Error",
+        "Failed to share book recommendation. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderRatingPicker = () => {
     const stars = [];
@@ -155,6 +203,40 @@ const Create = () => {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* CAPTION */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Caption</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Write a brief caption about the book"
+              placeholderTextColor={COLORS.placeholderText}
+              value={caption}
+              onChangeText={setCaption}
+              multiline
+            />
+          </View>
+
+          {/* SUBMIT */}
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <>
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={20}
+                  color={COLORS.white}
+                  style={styles.buttonIcon}
+                />
+                <Text style={styles.buttonText}>Share</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
